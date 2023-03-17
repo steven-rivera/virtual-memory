@@ -10,7 +10,7 @@ PHYSICAL_MEM_SIZE = NUM_FRAMES * FRAME_SIZE
 PM                = [0] * PHYSICAL_MEM_SIZE
 DISK              = [ [0] * FRAME_SIZE for _ in range(NUM_FRAMES) ]
 FREE_FRAMES       = deque(range(2, FRAME_SIZE))
-DEBUG = False
+DEBUG             = False
 
 
 def main():
@@ -76,38 +76,39 @@ def initialize_PM_without_demand_paging():
 def translate_VAs_to_PAs_without_demand_paging():
     global PM
 
-    with open(INPUT_FILE, "r") as f:
-        VAs = f.readline().strip().split()
+    with open("output-no-dp.txt", "w") as o:
+        with open(INPUT_FILE, "r") as f:
+            VAs = f.readline().strip().split()
 
-        mask_9bit = 0b1_1111_1111
-        mask_18bit = 0b11_1111_1111_1111_1111
+            mask_9bit = 0b1_1111_1111
+            mask_18bit = 0b11_1111_1111_1111_1111
 
-        for va in VAs:
-            va = int(va)
+            for va in VAs:
+                va = int(va)
 
-            # Right shift 18 bits because p and w are both 9 bits
-            s = va >> 18  
+                # Right shift 18 bits because p and w are both 9 bits
+                s = va >> 18  
 
-            # Right shift 9 bits to get rid of w and bitwise AND with first 9 bits
-            p = (va >> 9) & mask_9bit
+                # Right shift 9 bits to get rid of w and bitwise AND with first 9 bits
+                p = (va >> 9) & mask_9bit
 
-            # Bitwise AND with first 9 bits to get w
-            w = va & mask_9bit
+                # Bitwise AND with first 9 bits to get w
+                w = va & mask_9bit
 
-            # Bitwise AND with first 18 bits to get pw (pw = p*FRAME_SIZE + w)
-            pw = va & mask_18bit
+                # Bitwise AND with first 18 bits to get pw (pw = p*FRAME_SIZE + w)
+                pw = va & mask_18bit
 
-            if DEBUG: print(f"s:{s}, p:{p}, w:{w}, pw:{pw}")
+                if DEBUG: print(f"s:{s}, p:{p}, w:{w}, pw:{pw}")
 
-            segment_size = PM[2*s]
-            if pw >= segment_size:
-                print("-1")
-                continue
+                segment_size = PM[2*s]
+                if pw >= segment_size:
+                    o.write("-1 ")
+                    continue
 
-            page_table_frame = PM[(2*s) + 1]
-            page_frame_mem_address = (page_table_frame*FRAME_SIZE) + p
-            PA = (PM[page_frame_mem_address]*FRAME_SIZE) + w
-            print(PA)
+                page_table_frame = PM[(2*s) + 1]
+                page_frame_mem_address = (page_table_frame*FRAME_SIZE) + p
+                PA = (PM[page_frame_mem_address]*FRAME_SIZE) + w
+                o.write(f"{PA} ")
        
 
 
@@ -167,60 +168,61 @@ def translate_VAs_to_PAs_with_demand_paging():
     global PM
     global FREE_FRAMES
 
-    with open(INPUT_FILE, "r") as f:
-        VAs = f.readline().strip().split()
+    with open("output-dp.txt", "w") as o:
+        with open(INPUT_FILE, "r") as f:
+            VAs = f.readline().strip().split()
 
-        mask_9bit = 0b1_1111_1111
-        mask_18bit = 0b11_1111_1111_1111_1111
+            mask_9bit = 0b1_1111_1111
+            mask_18bit = 0b11_1111_1111_1111_1111
 
-        for va in VAs:
-            va = int(va)
+            for va in VAs:
+                va = int(va)
 
-            # Right shift 18 bits because p and w are both 9 bits
-            s = va >> 18  
+                # Right shift 18 bits because p and w are both 9 bits
+                s = va >> 18  
 
-            # Right shift 9 bits to get rid of w and bitwise AND with first 9 bits
-            p = (va >> 9) & mask_9bit
+                # Right shift 9 bits to get rid of w and bitwise AND with first 9 bits
+                p = (va >> 9) & mask_9bit
 
-            # Bitwise AND with first 9 bits to get w
-            w = va & mask_9bit
+                # Bitwise AND with first 9 bits to get w
+                w = va & mask_9bit
 
-            # Bitwise AND with first 18 bits to get pw (pw = p*FRAME_SIZE + w)
-            pw = va & mask_18bit
+                # Bitwise AND with first 18 bits to get pw (pw = p*FRAME_SIZE + w)
+                pw = va & mask_18bit
 
-            if DEBUG: print(f"s:{s}, p:{p}, w:{w}, pw:{pw}")
-
-
-            segment_size = PM[2*s]
-            if pw >= segment_size:
-                print("-1")
-                continue
-
-            page_table_frame = PM[(2*s) + 1]
-            if DEBUG: print("page_table_frame:", page_table_frame, end=" ")
-            
-            if page_table_frame < 0:
-                # If page table not in memory allocate free frame and copy block from disk to PM
-                free_page_table_frame = FREE_FRAMES.popleft()
-                copy_block_to_PM(abs(page_table_frame), free_page_table_frame)
-                PM[(2*s) + 1] = free_page_table_frame
-                page_table_frame = free_page_table_frame
+                if DEBUG: print(f"s:{s}, p:{p}, w:{w}, pw:{pw}")
 
 
-            page_frame_mem_address = (page_table_frame*FRAME_SIZE) + p
-            page_frame = PM[page_frame_mem_address]
-            
-            if DEBUG: print("page_frame_mem_address:", page_frame_mem_address, end=" ")
-            if DEBUG: print("page_frame:", page_frame)
-            
-            if page_frame < 0:
-                # If page frame of page p not in memory allocate free frame
-                free_frame = FREE_FRAMES.popleft()
-                PM[page_frame_mem_address] = free_frame
-                page_frame = free_frame
+                segment_size = PM[2*s]
+                if pw >= segment_size:
+                    o.write("-1 ")
+                    continue
+
+                page_table_frame = PM[(2*s) + 1]
+                if DEBUG: print("page_table_frame:", page_table_frame, end=" ")
                 
-            PA = (page_frame*FRAME_SIZE) + w
-            print(PA)
+                if page_table_frame < 0:
+                    # If page table not in memory allocate free frame and copy block from disk to PM
+                    free_page_table_frame = FREE_FRAMES.popleft()
+                    copy_block_to_PM(abs(page_table_frame), free_page_table_frame)
+                    PM[(2*s) + 1] = free_page_table_frame
+                    page_table_frame = free_page_table_frame
+
+
+                page_frame_mem_address = (page_table_frame*FRAME_SIZE) + p
+                page_frame = PM[page_frame_mem_address]
+                
+                if DEBUG: print("page_frame_mem_address:", page_frame_mem_address, end=" ")
+                if DEBUG: print("page_frame:", page_frame)
+                
+                if page_frame < 0:
+                    # If page frame of page p not in memory allocate free frame
+                    free_frame = FREE_FRAMES.popleft()
+                    PM[page_frame_mem_address] = free_frame
+                    page_frame = free_frame
+                    
+                PA = (page_frame*FRAME_SIZE) + w
+                o.write(f"{PA} ")
 
 
 
