@@ -28,11 +28,11 @@ def main():
     INPUT_FILE = args["input_file"]
 
     if args["withoutdp"]:
-        print("Running WITHOUT demand paging")
+        if DEBUG: print("Running WITHOUT demand paging")
         initialize_PM_without_demand_paging()
         translate_VAs_to_PAs_without_demand_paging()
     else:
-        print("Running WITH demand paging")
+        if DEBUG: print("Running WITH demand paging")
         initialize_PM_with_demand_paging()
         translate_VAs_to_PAs_with_demand_paging()
 
