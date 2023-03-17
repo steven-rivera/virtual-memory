@@ -2,23 +2,31 @@ import argparse
 from collections import deque
 
 
-INIT_FILE         = "init.txt"
-INPUT_FILE        = "input.txt"
+INIT_FILE         = ""
+INPUT_FILE        = ""
 NUM_FRAMES        = 1024
 FRAME_SIZE        = 512
 PHYSICAL_MEM_SIZE = NUM_FRAMES * FRAME_SIZE
 PM                = [0] * PHYSICAL_MEM_SIZE
 DISK              = [ [0] * FRAME_SIZE for _ in range(NUM_FRAMES) ]
 FREE_FRAMES       = deque(range(2, FRAME_SIZE))
+DEBUG = False
 
 
 def main():
+    global INIT_FILE
+    global INPUT_FILE 
 
     parser = argparse.ArgumentParser()
+    parser.add_argument("init_file",  help="file for initializing memory")
+    parser.add_argument("input_file", help="file containing virtual addresses to translate")
     parser.add_argument("--withoutdp", action="store_true", help="run without demand paging")
     
     args = vars(parser.parse_args())
     
+    INIT_FILE = args["init_file"]
+    INPUT_FILE = args["input_file"]
+
     if args["withoutdp"]:
         print("Running WITHOUT demand paging")
         initialize_PM_without_demand_paging()
@@ -89,8 +97,7 @@ def translate_VAs_to_PAs_without_demand_paging():
             # Bitwise AND with first 18 bits to get pw (pw = p*FRAME_SIZE + w)
             pw = va & mask_18bit
 
-            print(f"s:{s}, p:{p}, w:{w}, pw:{pw}")
-            # print(f"s:{s:b}, p:{p:b}, w:{w:b}, pw:{pw:b}")
+            if DEBUG: print(f"s:{s}, p:{p}, w:{w}, pw:{pw}")
 
             segment_size = PM[2*s]
             if pw >= segment_size:
@@ -181,8 +188,8 @@ def translate_VAs_to_PAs_with_demand_paging():
             # Bitwise AND with first 18 bits to get pw (pw = p*FRAME_SIZE + w)
             pw = va & mask_18bit
 
-            print(f"s:{s}, p:{p}, w:{w}, pw:{pw}")
-            # print(f"s:{s:b}, p:{p:b}, w:{w:b}, pw:{pw:b}")
+            if DEBUG: print(f"s:{s}, p:{p}, w:{w}, pw:{pw}")
+
 
             segment_size = PM[2*s]
             if pw >= segment_size:
@@ -190,7 +197,8 @@ def translate_VAs_to_PAs_with_demand_paging():
                 continue
 
             page_table_frame = PM[(2*s) + 1]
-            print("page_table_frame:", page_table_frame, end=" ")
+            if DEBUG: print("page_table_frame:", page_table_frame, end=" ")
+            
             if page_table_frame < 0:
                 # If page table not in memory allocate free frame and copy block from disk to PM
                 free_page_table_frame = FREE_FRAMES.popleft()
@@ -198,10 +206,13 @@ def translate_VAs_to_PAs_with_demand_paging():
                 PM[(2*s) + 1] = free_page_table_frame
                 page_table_frame = free_page_table_frame
 
+
             page_frame_mem_address = (page_table_frame*FRAME_SIZE) + p
             page_frame = PM[page_frame_mem_address]
-            print("page_frame_mem_address:", page_frame_mem_address, end=" ")
-            print("page_frame:", page_frame)
+            
+            if DEBUG: print("page_frame_mem_address:", page_frame_mem_address, end=" ")
+            if DEBUG: print("page_frame:", page_frame)
+            
             if page_frame < 0:
                 # If page frame of page p not in memory allocate free frame
                 free_frame = FREE_FRAMES.popleft()
